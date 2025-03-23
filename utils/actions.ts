@@ -4,13 +4,7 @@ import db from "@/utils/db";
 import { currentUser, auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { imageSchema, productSchema, validateWithZodSchema } from "./schemas";
-
-const renderError = (error: unknown): { message: string } => {
-  console.log(error);
-  return {
-    message: error instanceof Error ? error.message : "An error occurred",
-  };
-};
+import { uploadImage } from "./supabase";
 
 const getAuthUser = async () => {
   const user = await currentUser();
@@ -18,6 +12,19 @@ const getAuthUser = async () => {
     throw new Error("You must be logged in to access this route");
   }
   return user;
+};
+
+const getAdminUser = async () => {
+  const user = await getAuthUser();
+  if (user.id !== process.env.ADMIN_USER_ID) redirect("/");
+  return user;
+};
+
+const renderError = (error: unknown): { message: string } => {
+  console.log(error);
+  return {
+    message: error instanceof Error ? error.message : "An error occurred",
+  };
 };
 
 export const fetchFeaturedProducts = async () => {
@@ -63,18 +70,28 @@ export const createProductAction = async (
     const rawData = Object.fromEntries(formData);
     const file = formData.get("image") as File;
     const validatedFields = validateWithZodSchema(productSchema, rawData);
-    const validateFile = validateWithZodSchema(imageSchema, file);
+    const validatedFile = validateWithZodSchema(imageSchema, { image: file });
+    const fullPath = await uploadImage(validatedFile.image);
 
     await db.product.create({
       data: {
         ...validatedFields,
-        image: "/images/product-1.jpg",
+        image: fullPath,
         clerkId: user.id,
       },
     });
-
-    return { message: "product created" };
   } catch (error) {
     return renderError(error);
   }
+  redirect("/admin/products");
+};
+
+export const fetchAdminProducts = async () => {
+  await getAdminUser();
+  const products = await db.product.findMany({
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+  return products;
 };
