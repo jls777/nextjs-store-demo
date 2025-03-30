@@ -1,5 +1,5 @@
-function ProductReview() {
+function ProductReviews() {
   return <div>productreview</div>;
 }
 
-export default ProductReview;
+export default ProductReviews;
