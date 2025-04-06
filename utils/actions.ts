@@ -467,7 +467,7 @@ export const updateCart = async (cart: Cart) => {
   const shipping = cartTotal ? cart.shipping : 0;
   const orderTotal = cartTotal + tax + shipping;
 
-  await db.cart.update({
+  const currentCart = await db.cart.update({
     where: {
       id: cart.id,
     },
@@ -477,7 +477,9 @@ export const updateCart = async (cart: Cart) => {
       tax,
       orderTotal,
     },
+    include: includeProductClause,
   });
+  return currentCart;
 };
 
 export const addToCartAction = async (prevState: any, formData: FormData) => {
